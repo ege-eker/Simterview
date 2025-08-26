@@ -1,0 +1,25 @@
+{
+  "name": "interview-backend",
+  "type": "module",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@fastify/cors": "^8.4.2",
+    "@prisma/client": "^5.9.1",
+    "dotenv": "^16.4.0",
+    "fastify": "^4.26.2",
+    "livekit-server-sdk": "^2.13.2",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.1",
+    "prisma": "^5.9.1",
+    "tsx": "^4.20.4",
+    "typescript": "^5.4.0"
+  }
+}
