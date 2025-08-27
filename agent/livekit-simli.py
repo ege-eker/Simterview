@@ -40,6 +40,13 @@ async def entrypoint(ctx: JobContext):
     # initialize agent session with OpenAI realtime model
     session = AgentSession(
         llm=openai.realtime.RealtimeModel(model="gpt-4o-realtime-preview-2025-06-03", voice="alloy"),
+        turn_detection="realtime_llm",
+        min_endpointing_delay=0.8,
+        max_endpointing_delay=6.0,
+        allow_interruptions=True,
+        discard_audio_if_uninterruptible=True,
+        min_interruption_duration=0.5,
+        agent_false_interruption_timeout = 4.0,
     )
     # Simli avatar config
     avatar = simli.AvatarSession(
