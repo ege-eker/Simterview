@@ -1,8 +1,8 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 
-echo "📦 Running Prisma migrations..."
-npx prisma migrate deploy
+echo "📦 Running Prisma migrations (dev mode)..."
+npx prisma migrate dev --name init --skip-seed
 
 echo "🔧 Generating Prisma client..."
 npx prisma generate
