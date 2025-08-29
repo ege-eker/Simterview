@@ -7,17 +7,42 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Department {
+  id        Int        @id @default(autoincrement())
+  name      String     @unique
+  positions Position[]
+  createdAt DateTime   @default(now())
+}
+
+model Position {
+  id               Int              @id @default(autoincrement())
+  title            String
+  departmentId     Int
+  department       Department       @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  interviewPrompts PositionPrompt[]
+  candidates       Candidate[]
+
+  @@unique([title, departmentId])
+}
+
+model PositionPrompt {
+  id             Int      @id @default(autoincrement())
+  positionId     Int
+  position       Position @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  promptTemplate String
+  createdAt      DateTime @default(now())
+}
+
 model Candidate {
   id         Int         @id @default(autoincrement())
   firstName  String
   lastName   String
   email      String?
   phone      String?
-  department String?
-  position   String
-  company    String?
   resume     String?
   createdAt  DateTime    @default(now())
+  positionId Int
+  position   Position    @relation(fields: [positionId], references: [id], onDelete: Cascade)
   interviews Interview[]
 }
 
@@ -29,11 +54,4 @@ model Interview {
   status      String    @default("pending")
   startedAt   DateTime?
   finishedAt  DateTime?
-}
-
-model ProtokolSession {
-  id         Int      @id @default(autoincrement())
-  protokolId String
-  promptKey  String
-  createdAt  DateTime @default(now())
 }
