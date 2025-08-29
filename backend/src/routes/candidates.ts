@@ -22,10 +22,33 @@ export default async function candidatesRoutes(fastify: FastifyInstance) {
       },
     });
 
+    async function generateUniqueInterviewCode(length: number = 6): Promise<string> {
+      const min = Math.pow(10, length - 1);   // örn. 100000
+      const max = Math.pow(10, length) - 1;   // örn. 999999
+
+      let code: string;
+      let exists = true; // check database for uniqueness
+
+      while (exists) {
+        code = Math.floor(Math.random() * (max - min + 1) + min).toString();
+
+        const check = await prisma.interview.findUnique({
+          where: { interviewId: code },
+        });
+
+        exists = !!check;
+      }
+
+      return code!;
+    }
+
+    const uniqueCode = await generateUniqueInterviewCode();
+
     const interview = await prisma.interview.create({
-        data: {
-            candidateId: candidate.id,
-        },
+      data: {
+        candidateId: candidate.id,
+        interviewId: uniqueCode,
+      },
     });
 
     return { candidate, interview };

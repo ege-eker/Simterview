@@ -8,25 +8,25 @@ datasource db {
 }
 
 model Candidate {
-  id         Int       @id @default(autoincrement())
-  firstName String
-  lastName  String
+  id         Int         @id @default(autoincrement())
+  firstName  String
+  lastName   String
   email      String?
   phone      String?
   department String?
   position   String
   company    String?
   resume     String?
-  createdAt DateTime  @default(now())
+  createdAt  DateTime    @default(now())
   interviews Interview[]
 }
 
 model Interview {
-  id           Int       @id @default(autoincrement())
-  interviewId String    @default(uuid()) @unique
+  id          Int       @id @default(autoincrement())
+  interviewId String    @unique
   candidateId Int
-  candidate    Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
-  status       String    @default("pending")
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  status      String    @default("pending")
   startedAt   DateTime?
   finishedAt  DateTime?
 }
