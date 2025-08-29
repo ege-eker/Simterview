@@ -7,6 +7,8 @@ dotenv.config()
 import livekitRoutes from './routes/livekit'
 import candidatesRoutes from './routes/candidates'
 import protokolRoutes from './routes/protokol'
+import adminRoutes from "./routes/admin";
+import metaRoutes from "./routes/meta";
 
 const server = Fastify({ logger: true })
 
@@ -16,13 +18,12 @@ server.register(fastifyCors, { origin: true })
 server.register(livekitRoutes, { prefix: '/livekit' })
 server.register(candidatesRoutes, { prefix: '/candidates' })
 server.register(protokolRoutes, { prefix: '/protocol' })
-
+server.register(adminRoutes, { prefix: "/admin" });
+server.register(metaRoutes, { prefix: "/meta" });
 
 const start = async () => {
     try {
         await server.listen({ port: Number(process.env.PORT) || 4000, host: "0.0.0.0"})
-        const address = server.server.address();
-        console.log(`🚀 Server listening on ${address.address}:${address.port}`);
     }
     catch (err) {
         console.error(err)
