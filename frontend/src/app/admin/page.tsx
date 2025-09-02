@@ -26,6 +26,7 @@ export default function AdminPage() {
   const [newPrompt, setNewPrompt] = useState("");
   const [selectedPos, setSelectedPos] = useState<number | null>(null);
 
+  const apiUrl = process.env.NEXT_PUBLIC_PUBLIC_API_URL
   // AUTH
   const handleLogin = async () => {
     if (!secretInput.trim()) {
@@ -34,7 +35,7 @@ export default function AdminPage() {
     }
 
     // test req to backend
-    const res = await fetch("http://localhost:4000/admin/departments", {
+    const res = await fetch(`${apiUrl}/admin/departments`, {
       headers: { "x-protocol-key": secretInput },
     });
     if (res.status === 401) {
@@ -47,7 +48,7 @@ export default function AdminPage() {
   };
 
   const fetchDepartments = async (secret: string) => {
-    const res = await fetch("http://localhost:4000/admin/departments", {
+    const res = await fetch(`${apiUrl}/admin/departments`, {
       headers: { "x-protocol-key": secret },
     });
     const data = await res.json();
@@ -56,7 +57,7 @@ export default function AdminPage() {
 
   const addDepartment = async () => {
     if (!newDept.trim()) return alert("Departman adı boş olamaz");
-    const res = await fetch("http://localhost:4000/admin/departments", {
+    const res = await fetch(`${apiUrl}/admin/departments`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -71,7 +72,7 @@ export default function AdminPage() {
 
   const addPosition = async () => {
     if (!selectedDept || !newPos.trim()) return alert("Pozisyon girin");
-    const res = await fetch("http://localhost:4000/admin/positions", {
+    const res = await fetch(`${apiUrl}/admin/positions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -90,7 +91,7 @@ export default function AdminPage() {
 
   const addPrompt = async () => {
     if (!selectedPos || !newPrompt.trim()) return alert("Prompt boş olamaz");
-    const res = await fetch("http://localhost:4000/admin/prompts", {
+    const res = await fetch(`${apiUrl}/admin/prompts`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

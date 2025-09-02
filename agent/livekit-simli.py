@@ -5,7 +5,7 @@ from livekit.plugins import openai, simli
 from livekit.api import LiveKitAPI
 from livekit.protocol.room import ListRoomsRequest
 import asyncio
-
+import aiohttp
 
 logging.basicConfig(level=logging.INFO)
 load_dotenv()
@@ -22,6 +22,15 @@ async def fetch_room_metadata(room_name: str, retries: int = 15, delay: float = 
             await asyncio.sleep(delay)
     return None
 
+async def notify_backend_interview_finished(interview_id: str):
+    url = os.getenv("BACKEND_API_URL", "http://localhost:4000") + "/candidates/finish"
+    async with aiohttp.ClientSession() as s:
+        try:
+            resp = await s.post(url, json={"interviewId": interview_id}, timeout=10)
+            logging.info(f"✅ Interview finished bildirildi, status: {resp.status}")
+        except Exception as e:
+            logging.error(f"❌ Backend finish çağrısı başarısız: {e}")
+
 async def entrypoint(ctx: JobContext):
     logging.info(f"🟢 Worker started for room: {ctx.room.name}")
     prompt = "Default prompt"
@@ -33,6 +42,8 @@ async def entrypoint(ctx: JobContext):
             logging.info(f"new prompt from REST API: {prompt}")
         except Exception as e:
             logging.warning(f"Retry metadata parse error: {e}")
+
+
 
     logging.info(f"📝 Using prompt: {prompt}")
     logging.info(f"📝room info: {ctx.room}")
@@ -48,12 +59,31 @@ async def entrypoint(ctx: JobContext):
         min_interruption_duration=0.5,
         agent_false_interruption_timeout = 4.0,
     )
+
+    def on_conversation_item_added(ev):
+        try:
+            contents = getattr(ev.item, "content", [])
+            text = " ".join(contents) if contents else ""
+            role = getattr(ev.item, "role", "?")
+            print(f"💬 [{role}] {text}")
+
+            normalized = text.strip().lower()
+            if role == "assistant" and "mülakat sona erdi" in normalized:
+                logging.info("🛑 Interview finished by Agent closing phrase")
+                asyncio.create_task(notify_backend_interview_finished(ctx.room.name))
+                asyncio.create_task(session.aclose())
+                asyncio.create_task(ctx.room.disconnect())
+        except Exception as e:
+            logging.error(f"Listener error: {e}")
+    # log conversation items
+    session.on("conversation_item_added", on_conversation_item_added)
+
     # Simli avatar config
     avatar = simli.AvatarSession(
         simli_config=simli.SimliConfig(
             api_key=os.getenv("SIMLI_API_KEY"),
             face_id=os.getenv("SIMLI_FACE_ID"),
-            max_idle_time=120,
+            max_idle_time=30,
             max_session_length=3600,
         ),
     )

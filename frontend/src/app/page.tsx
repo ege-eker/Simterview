@@ -27,7 +27,8 @@ export default function HomePage() {
 
     setLoading(true);
     try {
-      const resp = await fetch("http://localhost:4000/candidates/start", {
+      const apiUrl = process.env.NEXT_PUBLIC_PUBLIC_API_URL;
+      const resp = await fetch(`${apiUrl}/candidates/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ lastName, interviewId }),

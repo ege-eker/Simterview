@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
@@ -14,9 +13,7 @@ import { Track } from "livekit-client";
 import "@livekit/components-styles";
 
 function SimliOnlyVideo() {
-  const tracks = useTracks([
-    { source: Track.Source.Camera, withPlaceholder: false }
-  ]);
+  const tracks = useTracks([{ source: Track.Source.Camera, withPlaceholder: false }]);
   return (
     <GridLayout tracks={tracks}>
       <ParticipantTile />
@@ -32,11 +29,15 @@ export default function InterviewRoom() {
 
   const [token, setToken] = useState<string | null>(null);
   const [serverUrl, setServerUrl] = useState<string | undefined>(undefined);
-    const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+  const [finished, setFinished] = useState(false);
 
+  const apiUrl = process.env.NEXT_PUBLIC_PUBLIC_API_URL;
+
+  // LiveKit token al
   useEffect(() => {
     if (interviewId && identity) {
-      fetch("http://localhost:4000/livekit/token", {
+      fetch(`${apiUrl}/livekit/token`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ interviewId, identity }),
@@ -49,6 +50,34 @@ export default function InterviewRoom() {
     }
   }, [interviewId, identity]);
 
+  // Interview status poll
+  useEffect(() => {
+    if (!interviewId) return;
+    const interval = setInterval(async () => {
+      const res = await fetch(`${apiUrl}/meta/interviewStatus?interviewId=${interviewId}`);
+      const data = await res.json();
+      if (data.status === "finished") {
+        setFinished(true);
+        clearInterval(interval);
+
+        setTimeout(() => {
+          router.push("/");
+        }, 5000);
+      }
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [interviewId]);
+
+  if (finished) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
+        <h1>✅ Mülakat Sona Ermiştir</h1>
+        <p>Teşekkür ederiz. Ana sayfaya yönlendiriliyorsunuz...</p>
+      </div>
+    );
+  }
+
   if (!token || !serverUrl) return <p>LiveKit token alınıyor...</p>;
 
   return (
@@ -58,50 +87,26 @@ export default function InterviewRoom() {
       connect={true}
       audio={true}
       video={false}
+      options={{ adaptiveStream: false, dynacast: false }}
       onDisconnected={() => router.push("/")}
-      style={{ height: "100%", display: "flex", flexDirection: "column",
-      justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: darkMode ? "#1a1a1a" : "white",
-          position: "relative",
+      style={{
+        height: "100%", display: "flex", flexDirection: "column",
+        justifyContent: "center", alignItems: "center",
+        backgroundColor: darkMode ? "#1a1a1a" : "white",
+        position: "relative",
       }}
     >
-        <button style={{
-            position: "absolute",
-            top: "1rem",
-            right: "1rem",
-            zIndex: 10,
-            padding: "0.5rem 1rem",
-            backgroundColor: darkMode ? "#444" : "#ddd",
-            color: darkMode ? "white" : "black",
-            border: "none",
-            borderRadius: "5px",
-            cursor: "pointer",
-        }} onClick={() => setDarkMode(!darkMode)}>
-            {darkMode ? "🌞" : "🌙"}
-        </button>
-      <div style={{
-          position: "relative",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          flex: 1,
-          padding: "1rem",
-          color: "white",
-      }}>
-          <SimliOnlyVideo/>
+      <button
+        onClick={() => setDarkMode(!darkMode)}
+        style={{ position: "absolute", top: "1rem", right: "1rem" }}
+      >
+        {darkMode ? "🌞" : "🌙"}
+      </button>
+      <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center" }}>
+        <SimliOnlyVideo />
       </div>
       <RoomAudioRenderer />
-      <div style={{ display: "flex", justifyContent: "center", padding: "1rem", color: darkMode ? "white" : "black" }}>
-        <ControlBar
-          variation="minimal"
-          controls={{
-            microphone: true,
-            camera: false,
-            leave: true
-          }}
-        />
-      </div>
+      <ControlBar variation="minimal" controls={{ microphone: true, camera: false, leave: true }} />
     </LiveKitRoom>
   );
 }

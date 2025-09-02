@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import prisma from '../services/db';
 import { roomService } from "../services/livekit";
 import { Room } from 'livekit-server-sdk';
+import {sendInterviewCodeMail} from "../services/mail";
 
 export default async function candidatesRoutes(fastify: FastifyInstance) {
   // Candidate register
@@ -48,8 +49,19 @@ export default async function candidatesRoutes(fastify: FastifyInstance) {
       },
     });
 
+    if (candidate.email) {
+        try {
+            await sendInterviewCodeMail(candidate.email, uniqueCode);
+            console.log(`📧 Interview code email sent to ${candidate.email}, interviewId: ${uniqueCode}`);
+        }
+        catch (err) {
+            console.log("⚠️ Could not send interview code email:", err);
+        }
+    }
+
     return { candidate, interview };
 });
+
   fastify.post("/start", async (req, reply) => {
       const  { lastName, interviewId } = req.body as { lastName: string, interviewId: string };
 
@@ -86,6 +98,7 @@ export default async function candidatesRoutes(fastify: FastifyInstance) {
         emptyTimeout: 298,
         maxParticipants: 10,
         metadata: JSON.stringify({ prompt }),
+        videoCodecs: "vp8",
       }
 
       try {
@@ -108,4 +121,27 @@ export default async function candidatesRoutes(fastify: FastifyInstance) {
 
       return { message: "Interview started", interview, prompt };
   });
+
+  fastify.post("/finish", async (req, reply) => {
+    const { interviewId } = req.body as { interviewId: string };
+
+    if (!interviewId) return reply.status(400).send({ error: "interviewId gerekli" });
+
+    const interview = await prisma.interview.findUnique({ where: { interviewId } });
+    if (!interview) return reply.status(404).send({ error: "Interview bulunamadı" });
+
+    const updated = await prisma.interview.update({
+        where: { interviewId },
+        data: { status: "finished", finishedAt: new Date() }
+    });
+
+    try {
+        await roomService.deleteRoom(interviewId);
+        console.log(`🧹 Room ${interviewId} deleted (all participants out)`);
+    } catch (e: any) {
+        console.log("⚠️ Could not deleteRoom (maybe already closed):", e.message);
+    }
+
+    return { message: "✅ Interview finished", interview: updated };
+    });
 }

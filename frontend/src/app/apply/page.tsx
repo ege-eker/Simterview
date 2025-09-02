@@ -26,16 +26,17 @@ export default function CandidateApplyPage() {
 
   const [interviewCode, setInterviewCode] = useState<string | null>(null);
 
+  const apiUrl = process.env.NEXT_PUBLIC_PUBLIC_API_URL;
+
   useEffect(() => {
-    fetch("http://localhost:4000/meta/departments")
+    fetch(`${apiUrl}/meta/departments`)
       .then((res) => res.json())
       .then((data: Department[]) => setDepartments(data));
   }, []);
 
   const loadPositions = async (deptId: number) => {
     setSelectedDept(deptId);
-    const res = await fetch(
-      `http://localhost:4000/meta/positions?departmentId=${deptId}`
+    const res = await fetch(`${apiUrl}/meta/positions?departmentId=${deptId}`
     );
     setPositions(await res.json());
   };
@@ -55,7 +56,7 @@ export default function CandidateApplyPage() {
       positionId: selectedPos
     };
 
-    const res = await fetch("http://localhost:4000/candidates", {
+    const res = await fetch(`${apiUrl}/candidates`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body)

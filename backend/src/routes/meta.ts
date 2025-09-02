@@ -15,4 +15,17 @@ export default async function metaRoutes(fastify: FastifyInstance) {
       where: { departmentId: Number(departmentId) }
     });
   });
+
+  fastify.get('/interviewStatus', async (req, reply) => {
+    const { interviewId } = req.query as { interviewId?: string };
+    if (!interviewId) return reply.status(400).send({ error: "interviewId gerekli" });
+
+    const interview = await prisma.interview.findUnique({
+        where: { interviewId }
+    });
+
+    if (!interview) return reply.status(404).send({ error: "Interview not found" });
+
+    return { status: interview.status };
+  });
 }
