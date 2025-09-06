@@ -29,6 +29,36 @@ async def fetch_room_metadata(room_name: str, retries: int = 15, delay: float = 
             await asyncio.sleep(delay)
     return None
 
+async def handle_interview_finish(session: AgentSession, ctx: JobContext):
+    room_id = ctx.room.name
+    logging.info(f"🛑 Interview bitiş süreci başlatıldı → oda: {room_id}")
+
+    try:
+        logging.info("📨 1. Backend'e 'finished' bildirimi gönderiliyor...")
+        await notify_backend_interview_finished(room_id)
+        logging.info("✅ Backend'e başarılı şekilde bildirildi.")
+    except Exception as e:
+        logging.error(f"❌ Backend finish bildirimi başarısız: {e}")
+
+    try:
+        logging.info("🗑️ 2. Agent session kapatılıyor...")
+        await session.aclose()
+        logging.info("✅ Agent session kapandı.")
+    except Exception as e:
+        logging.error(f"❌ Agent session kapatılamadı: {e}")
+
+    try:
+        if ctx.room.connection_state == 1:
+            logging.info("🔌 3. LiveKit odasından çıkılıyor...")
+            await ctx.delete_room()
+            logging.info("✅ Oda bağlantısı silindi")
+        else:
+            logging.info("ℹ️ Oda zaten yok.")
+    except Exception as e:
+        logging.error(f"❌ Oda bağlantısı kapatılamadı: {e}")
+
+    logging.info("🎉 Interview clean-up süreci tamamlandı.")
+
 async def entrypoint(ctx: JobContext):
     logging.info(f"🟢 Worker started for room: {ctx.room.name}")
     prompt = "Default prompt"
@@ -64,9 +94,8 @@ async def entrypoint(ctx: JobContext):
 
             normalized = text.strip().lower()
             if role == "assistant" and "mülakat sona erdi" in normalized:
-                logging.info("🛑 Interview finished by Agent closing phrase")
-                asyncio.create_task(notify_backend_interview_finished(ctx.room.name))
-                asyncio.create_task(session.aclose())
+                logging.info("🛑 Agent bitiş cümlesini söyledi, kapatma işlemi başlatılıyor...")
+                asyncio.create_task(handle_interview_finish(session, ctx))
         except Exception as e:
             logging.error(f"Listener error: {e}")
 

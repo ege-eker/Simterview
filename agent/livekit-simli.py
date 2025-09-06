@@ -31,6 +31,36 @@ async def notify_backend_interview_finished(interview_id: str):
         except Exception as e:
             logging.error(f"❌ Backend finish çağrısı başarısız: {e}")
 
+async def handle_interview_finish(session: AgentSession, ctx: JobContext):
+    room_id = ctx.room.name
+    logging.info(f"🛑 Interview bitiş süreci başlatıldı → oda: {room_id}")
+
+    try:
+        logging.info("📨 1. Backend'e 'finished' bildirimi gönderiliyor...")
+        await notify_backend_interview_finished(room_id)
+        logging.info("✅ Backend'e başarılı şekilde bildirildi.")
+    except Exception as e:
+        logging.error(f"❌ Backend finish bildirimi başarısız: {e}")
+
+    try:
+        logging.info("🗑️ 2. Agent session kapatılıyor...")
+        await session.aclose()
+        logging.info("✅ Agent session kapandı.")
+    except Exception as e:
+        logging.error(f"❌ Agent session kapatılamadı: {e}")
+
+    try:
+        if ctx.room.connection_state == 1:
+            logging.info("🔌 3. LiveKit odasından çıkılıyor...")
+            await ctx.delete_room()
+            logging.info("✅ Oda  silindi.")
+        else:
+            logging.info("ℹ️ Oda zaten bağlı değil.")
+    except Exception as e:
+        logging.error(f"❌ Oda bağlantısı kapatılamadı: {e}")
+
+    logging.info("🎉 Interview clean-up süreci tamamlandı.")
+
 async def entrypoint(ctx: JobContext):
     logging.info(f"🟢 Worker started for room: {ctx.room.name}")
     prompt = "Default prompt"
@@ -69,31 +99,35 @@ async def entrypoint(ctx: JobContext):
 
             normalized = text.strip().lower()
             if role == "assistant" and "mülakat sona erdi" in normalized:
-                logging.info("🛑 Interview finished by Agent closing phrase")
-                asyncio.create_task(notify_backend_interview_finished(ctx.room.name))
-                asyncio.create_task(session.aclose())
-                asyncio.create_task(ctx.room.disconnect())
+                logging.info("🛑 Agent bitiş cümlesini söyledi, kapatma işlemi başlatılıyor...")
+                asyncio.create_task(handle_interview_finish(session, ctx))
         except Exception as e:
             logging.error(f"Listener error: {e}")
     # log conversation items
     session.on("conversation_item_added", on_conversation_item_added)
 
-    # Simli avatar config
-    avatar = simli.AvatarSession(
-        simli_config=simli.SimliConfig(
-            api_key=os.getenv("SIMLI_API_KEY"),
-            face_id=os.getenv("SIMLI_FACE_ID"),
-            max_idle_time=30,
-            max_session_length=3600,
-        ),
-    )
-    await avatar.start(session, room=ctx.room)
 
     # start agent session
-    await session.start(
-        agent=Agent(instructions=prompt),
-        room=ctx.room,
-    )
+    for i in range(10):
+        try:
+            avatar = simli.AvatarSession(
+                simli_config=simli.SimliConfig(
+                    api_key=os.getenv("SIMLI_API_KEY"),
+                    face_id=os.getenv("SIMLI_FACE_ID"),
+                    max_idle_time=30,
+                    max_session_length=3600,
+                ),
+            )
+            await avatar.start(session, room=ctx.room)
+
+            await session.start(
+                agent=Agent(instructions=prompt),
+                room=ctx.room,
+            )
+            break
+        except Exception as e:
+            logging.error(f"Session start error, retrying {i+1}/10: {e}")
+            await asyncio.sleep(2)
 
 if __name__ == "__main__":
     cli.run_app(

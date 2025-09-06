@@ -133,15 +133,8 @@ export default async function candidatesRoutes(fastify: FastifyInstance) {
     const updated = await prisma.interview.update({
         where: { interviewId },
         data: { status: "finished", finishedAt: new Date() }
-    });
-
-    try {
-        await roomService.deleteRoom(interviewId);
-        console.log(`🧹 Room ${interviewId} deleted (all participants out)`);
-    } catch (e: any) {
-        console.log("⚠️ Could not deleteRoom (maybe already closed):", e.message);
-    }
-
-    return { message: "✅ Interview finished", interview: updated };
+    })
+    console.log(`✅ Interview ${interviewId} finished at ${updated.finishedAt}`);
+    return { message: "✅ Interview finished, user updated", interview: updated };
     });
 }
